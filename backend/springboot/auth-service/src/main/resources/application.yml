@@ -7,9 +7,9 @@ spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:ai_workspace_auth}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:AuthDB}
     username: ${DB_USER:postgres}
-    password: ${DB_PASS:password}
+    password: ${DB_PASS:Faizan@786}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

@@ -24,10 +24,17 @@ export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // OTP state additions
+  const [authMethod, setAuthMethod] = useState<"password" | "otp">("password");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<LoginFields>({
     resolver: zodResolver(loginSchema),
@@ -51,7 +58,67 @@ export default function LoginPage() {
     } catch (err: any) {
       toast({
         title: "Authentication Failed",
-        description: err?.message || "Invalid credentials, please try again.",
+        description: err?.response?.data?.error || err?.message || "Invalid credentials, please try again.",
+        type: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    const email = watch("email");
+    if (!email || !email.includes("@")) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address first.",
+        type: "destructive",
+      });
+      return;
+    }
+    setIsSendingOtp(true);
+    try {
+      await authService.sendOtp(email);
+      setOtpSent(true);
+      toast({
+        title: "OTP Dispatched",
+        description: "A one-time passcode has been sent to your email address.",
+        type: "success",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Failed to Send OTP",
+        description: err?.response?.data?.error || err?.message || "User not found or error sending OTP.",
+        type: "destructive",
+      });
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const email = watch("email");
+    if (!otpCode || otpCode.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "OTP code must be exactly 6 characters.",
+        type: "destructive",
+      });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await authService.verifyOtp(email, otpCode);
+      toast({
+        title: "Welcome back!",
+        description: "Authenticated successfully via OTP. Redirecting...",
+        type: "success",
+      });
+      router.push("/");
+    } catch (err: any) {
+      toast({
+        title: "Verification Failed",
+        description: err?.response?.data?.error || err?.message || "Invalid or expired OTP code.",
         type: "destructive",
       });
     } finally {
@@ -71,68 +138,182 @@ export default function LoginPage() {
       </CardHeader>
       
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
-              <Input
-                {...register("email")}
-                type="email"
-                placeholder="name@company.com"
-                className={`pl-10 ${errors.email ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
-              />
-            </div>
-            {errors.email && (
-              <span className="text-xs text-rose-500">{errors.email.message}</span>
-            )}
-          </div>
+        {/* Auth Method Tabs */}
+        <div className="flex border-b border-border/40 mb-6 gap-4">
+          <button
+            type="button"
+            onClick={() => setAuthMethod("password")}
+            className={`flex-1 pb-3 text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
+              authMethod === "password"
+                ? "border-b-2 border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
+            }`}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            onClick={() => setAuthMethod("otp")}
+            className={`flex-1 pb-3 text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
+              authMethod === "otp"
+                ? "border-b-2 border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
+            }`}
+          >
+            One-Time Passcode
+          </button>
+        </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
+        {authMethod === "password" ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Password
+                Email Address
               </label>
-              <Link
-                href="/forgot-password"
-                className="text-xs text-primary hover:underline font-medium"
-              >
-                Forgot?
-              </Link>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Input
+                  {...register("email")}
+                  type="email"
+                  placeholder="name@company.com"
+                  className={`pl-10 ${errors.email ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
+                />
+              </div>
+              {errors.email && (
+                <span className="text-xs text-rose-500">{errors.email.message}</span>
+              )}
             </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
-              <Input
-                {...register("password")}
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                className={`pl-10 pr-10 ${errors.password ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
-              />
-              <button
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Password
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-primary hover:underline font-medium"
+                >
+                  Forgot?
+                </Link>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Input
+                  {...register("password")}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className={`pl-10 pr-10 ${errors.password ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                </button>
+              </div>
+              {errors.password && (
+                <span className="text-xs text-rose-500">{errors.password.message}</span>
+              )}
+            </div>
+
+            <Button type="submit" variant="gradient" className="w-full h-11" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Authenticating...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Input
+                  {...register("email")}
+                  type="email"
+                  placeholder="name@company.com"
+                  disabled={otpSent}
+                  className={`pl-10 ${errors.email ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
+                />
+              </div>
+              {errors.email && (
+                <span className="text-xs text-rose-500">{errors.email.message}</span>
+              )}
+            </div>
+
+            {otpSent && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  One-Time Passcode
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                  <Input
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    type="text"
+                    maxLength={6}
+                    placeholder="123456"
+                    className="pl-10 text-center tracking-widest font-bold text-lg"
+                  />
+                </div>
+              </div>
+            )}
+
+            {!otpSent ? (
+              <Button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                onClick={handleSendOtp}
+                variant="gradient"
+                className="w-full h-11"
+                disabled={isSendingOtp}
               >
-                {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
-              </button>
-            </div>
-            {errors.password && (
-              <span className="text-xs text-rose-500">{errors.password.message}</span>
+                {isSendingOtp ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...
+                  </>
+                ) : (
+                  "Send Code via Email"
+                )}
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  variant="gradient"
+                  className="w-full h-11"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+                    </>
+                  ) : (
+                    "Verify & Sign In"
+                  )}
+                </Button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={isSendingOtp}
+                    className="text-xs text-primary hover:underline font-semibold disabled:opacity-50"
+                  >
+                    {isSendingOtp ? "Resending..." : "Resend code"}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
-
-          <Button type="submit" variant="gradient" className="w-full h-11" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Authenticating...
-              </>
-            ) : (
-              "Sign In"
-            )}
-          </Button>
-        </form>
+        )}
       </CardContent>
 
       <CardFooter className="flex flex-col gap-2">

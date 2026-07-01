@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,9 +19,12 @@ const verifySchema = z.object({
 
 type VerifyFields = z.infer<typeof verifySchema>;
 
-export default function VerifyEmailPage() {
+function VerifyEmailForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") || "";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const {
     register,
@@ -35,9 +38,17 @@ export default function VerifyEmailPage() {
   });
 
   const onSubmit = async (data: VerifyFields) => {
+    if (!email) {
+      toast({
+        title: "Missing Email",
+        description: "Please check your URL or log in first.",
+        type: "destructive",
+      });
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await authService.verifyEmail("alex.rivera@workspace.ai", data.code);
+      await authService.verifyEmail(email, data.code);
       toast({
         title: "Account verified!",
         description: "Your email has been confirmed. Redirecting to login...",
@@ -47,11 +58,39 @@ export default function VerifyEmailPage() {
     } catch (err: any) {
       toast({
         title: "Verification Failed",
-        description: err?.message || "Invalid code. Please try again.",
+        description: err?.response?.data?.error || err?.message || "Invalid code. Please try again.",
         type: "destructive",
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email) {
+      toast({
+        title: "Missing Email",
+        description: "Cannot resend verification code without email address.",
+        type: "destructive",
+      });
+      return;
+    }
+    setIsResending(true);
+    try {
+      await authService.sendOtp(email);
+      toast({
+        title: "Code Resent",
+        description: "A new verification code has been dispatched to your email.",
+        type: "success",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Failed to resend code",
+        description: err?.response?.data?.error || err?.message || "Please try again later.",
+        type: "destructive",
+      });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -61,8 +100,8 @@ export default function VerifyEmailPage() {
         <CardTitle className="text-2xl font-bold tracking-tight text-center">
           Verify Email
         </CardTitle>
-        <CardDescription className="text-center">
-          We've sent a 6-digit confirmation code to your email
+        <CardDescription className="text-center font-medium text-xs text-muted-foreground/80">
+          We've sent a 6-digit confirmation code to {email || "your email"}
         </CardDescription>
       </CardHeader>
       
@@ -103,15 +142,24 @@ export default function VerifyEmailPage() {
       <CardFooter className="flex flex-col gap-2">
         <button
           type="button"
-          onClick={() => toast({ title: "Code Resent", description: "A new code has been sent to your email address.", type: "success" })}
-          className="text-xs text-primary hover:underline font-semibold"
+          onClick={handleResend}
+          disabled={isResending}
+          className="text-xs text-primary hover:underline font-semibold disabled:opacity-50"
         >
-          Resend verification email
+          {isResending ? "Resending code..." : "Resend verification email"}
         </button>
         <Link href="/login" className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground font-semibold mt-2 transition-colors">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Sign In
         </Link>
       </CardFooter>
     </Card>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="text-center p-6 text-sm text-muted-foreground">Loading verification form...</div>}>
+      <VerifyEmailForm />
+    </Suspense>
   );
 }

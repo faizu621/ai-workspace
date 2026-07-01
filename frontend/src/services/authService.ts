@@ -61,5 +61,28 @@ export const authService = {
   async changePassword(currentPassword: string, newPassword: string) {
     await axiosInstance.post("/auth/change-password", { currentPassword, newPassword });
     return { success: true, message: "Password changed successfully." };
+  },
+
+  async sendOtp(email: string) {
+    await axiosInstance.post("/auth/send-otp", { email });
+    return { success: true, message: "OTP sent successfully." };
+  },
+
+  async verifyOtp(email: string, otp: string) {
+    const response = await axiosInstance.post("/auth/verify-otp", { email, otp });
+    const { token, id, name, email: responseEmail, role } = response.data;
+    const userProfile: UserProfile = {
+      id: String(id),
+      name: name,
+      email: responseEmail,
+      role: role ? (role.toLowerCase() as "admin" | "member" | "viewer") : "member",
+      skills: [],
+      socialLinks: {},
+      apiKeys: [],
+      sessions: []
+    };
+    const store = useAuthStore.getState();
+    store.login(token, userProfile);
+    return { success: true, user: userProfile };
   }
 };

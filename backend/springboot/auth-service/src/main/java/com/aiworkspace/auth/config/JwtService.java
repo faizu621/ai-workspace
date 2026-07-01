@@ -72,6 +72,14 @@ public class JwtService {
                 .getBody();
     }
 
+    public String extractEmailFromExpiredToken(String token) {
+        try {
+            return extractEmail(token);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims().getSubject();
+        }
+    }
+
     private Key getSigningKey() {
         byte[] keyBytes = this.secretKey.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);

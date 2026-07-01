@@ -55,7 +55,7 @@ export default function RegisterPage() {
         description: "Account created. A verification code has been dispatched.",
         type: "success",
       });
-      router.push("/");
+      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch (err: any) {
       toast({
         title: "Account Creation Failed",
