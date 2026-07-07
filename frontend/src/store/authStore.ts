@@ -21,6 +21,7 @@ export interface UserProfile {
   name: string;
   email: string;
   avatar?: string;
+  bio?: string;
   role: "admin" | "member" | "viewer";
   skills: string[];
   socialLinks: {
@@ -95,7 +96,12 @@ export const useAuthStore = create<AuthState>((set) => {
     initialToken = localStorage.getItem("auth_token");
     initialAuth = !!initialToken;
     if (initialAuth) {
-      initialUser = mockUser;
+      const storedUser = localStorage.getItem("auth_user");
+      try {
+        initialUser = storedUser ? JSON.parse(storedUser) : mockUser;
+      } catch (e) {
+        initialUser = mockUser;
+      }
     }
   }
 
@@ -109,7 +115,10 @@ export const useAuthStore = create<AuthState>((set) => {
       { id: "ws_pers", name: "Alex Personal", type: "personal" },
     ],
     login: (token, user) => {
-      localStorage.setItem("auth_token", token);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("auth_token", token);
+        localStorage.setItem("auth_user", JSON.stringify(user));
+      }
       set({
         isAuthenticated: true,
         token: token,
@@ -117,7 +126,10 @@ export const useAuthStore = create<AuthState>((set) => {
       });
     },
     register: (token, user) => {
-      localStorage.setItem("auth_token", token);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("auth_token", token);
+        localStorage.setItem("auth_user", JSON.stringify(user));
+      }
       set({
         isAuthenticated: true,
         token: token,
@@ -125,13 +137,20 @@ export const useAuthStore = create<AuthState>((set) => {
       });
     },
     logout: () => {
-      localStorage.removeItem("auth_token");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+      }
       set({ isAuthenticated: false, token: null, user: null });
     },
     updateProfile: (updated) =>
-      set((state) => ({
-        user: state.user ? { ...state.user, ...updated } : null,
-      })),
+      set((state) => {
+        const newUser = state.user ? { ...state.user, ...updated } : null;
+        if (newUser && typeof window !== "undefined") {
+          localStorage.setItem("auth_user", JSON.stringify(newUser));
+        }
+        return { user: newUser };
+      }),
     generateApiKey: (name) =>
       set((state) => {
         if (!state.user) return {};
@@ -141,22 +160,26 @@ export const useAuthStore = create<AuthState>((set) => {
           key: `sk_live_${Math.random().toString(36).substr(2, 6)}...${Math.random().toString(36).substr(2, 4)}`,
           createdAt: new Date().toISOString().split("T")[0],
         };
-        return {
-          user: {
-            ...state.user,
-            apiKeys: [...state.user.apiKeys, newKey],
-          },
+        const newUser = {
+          ...state.user,
+          apiKeys: [...state.user.apiKeys, newKey],
         };
+        if (typeof window !== "undefined") {
+          localStorage.setItem("auth_user", JSON.stringify(newUser));
+        }
+        return { user: newUser };
       }),
     revokeApiKey: (id) =>
       set((state) => {
         if (!state.user) return {};
-        return {
-          user: {
-            ...state.user,
-            apiKeys: state.user.apiKeys.filter((key) => key.id !== id),
-          },
+        const newUser = {
+          ...state.user,
+          apiKeys: state.user.apiKeys.filter((key) => key.id !== id),
         };
+        if (typeof window !== "undefined") {
+          localStorage.setItem("auth_user", JSON.stringify(newUser));
+        }
+        return { user: newUser };
       }),
     switchWorkspace: (id) =>
       set((state) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -97,6 +97,7 @@ export default function SettingsPage() {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<ProfileFields>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -107,6 +108,26 @@ export default function SettingsPage() {
       linkedin: user?.socialLinks?.linkedin || "",
     },
   });
+
+  useEffect(() => {
+    async function syncProfile() {
+      try {
+        const freshUser = await userService.getProfile();
+        if (freshUser) {
+          reset({
+            name: freshUser.name || "",
+            email: freshUser.email || "",
+            github: freshUser.socialLinks?.github || "",
+            twitter: freshUser.socialLinks?.twitter || "",
+            linkedin: freshUser.socialLinks?.linkedin || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to sync fresh profile", err);
+      }
+    }
+    syncProfile();
+  }, [reset]);
 
   if (!user) return null;
 

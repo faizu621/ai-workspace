@@ -7,7 +7,8 @@ import { useTheme } from "next-themes";
 import {
   Terminal, Sun, Moon, Bell, Search, LogOut, Settings, LayoutDashboard,
   Kanban, MessageSquare, Bot, FileText, BarChart3, Users2, ShieldAlert,
-  ChevronLeft, ChevronRight, Menu, X, Check, Calendar, Plus, HelpCircle
+  ChevronLeft, ChevronRight, Menu, X, Check, Calendar, Plus, HelpCircle,
+  User, Users
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
@@ -102,6 +103,7 @@ export default function DashboardLayout({
     { name: "Chat", href: "/chat", icon: MessageSquare },
     { name: "Documents", href: "/documents", icon: FileText },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
+    { name: "Directory", href: "/users", icon: Users },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
@@ -448,6 +450,14 @@ export default function DashboardLayout({
                     <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
                   </div>
                   <div className="py-1">
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 p-2 text-xs font-semibold rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <User className="h-3.5 w-3.5" />
+                      View/Edit Profile
+                    </Link>
                     <Link
                       href="/settings"
                       onClick={() => setIsProfileDropdownOpen(false)}
