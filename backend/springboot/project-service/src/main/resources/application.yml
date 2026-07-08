@@ -1,0 +1,25 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: project-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:AuthDB}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:Faizan@786}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  secret: ${JWT_SECRET:9a4f2c8d3b7a1e5f8g2h6i0j4k8l2m6n0o4p8q2r6s0t4u8v2w6x0y4z8}
+  expiration: ${JWT_EXPIRATION:86400000}
