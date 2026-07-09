@@ -2,6 +2,8 @@ package com.aiworkspace.project.controller;
 
 import com.aiworkspace.project.dto.ProjectRequest;
 import com.aiworkspace.project.dto.ProjectResponse;
+import com.aiworkspace.project.dto.ProjectMemberRequest;
+import com.aiworkspace.project.dto.ProjectMemberResponse;
 import com.aiworkspace.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +48,48 @@ public class ProjectController {
         try {
             ProjectResponse project = projectService.getProjectById(id);
             return ResponseEntity.ok(project);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.toString()));
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateProject(@PathVariable Long id, @RequestBody ProjectRequest request) {
+        try {
+            ProjectResponse response = projectService.updateProject(id, request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.toString()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteProject(@PathVariable Long id) {
+        try {
+            projectService.deleteProject(id);
+            return ResponseEntity.ok(Map.of("message", "Project soft-deleted successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.toString()));
+        }
+    }
+
+    @PostMapping("/{id}/members")
+    public ResponseEntity<?> addMember(@PathVariable Long id, @RequestBody ProjectMemberRequest request) {
+        try {
+            ProjectMemberResponse response = projectService.addMember(id, request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError()
