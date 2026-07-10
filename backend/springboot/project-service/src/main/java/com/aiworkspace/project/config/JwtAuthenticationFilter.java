@@ -1,11 +1,14 @@
 package com.aiworkspace.project.config;
 
+import com.aiworkspace.project.model.User;
+import com.aiworkspace.project.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -18,6 +21,7 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -33,10 +37,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String email = jwtService.extractEmail(jwt);
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        email, null, Collections.emptyList());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                User user = userRepository.findByEmail(email).orElse(null);
+                if (user != null) {
+                    String normalizedRole = user.getRole().toUpperCase().replace(" ", "_");
+                    UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail(), normalizedRole);
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + normalizedRole);
+
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            principal, null, Collections.singletonList(authority));
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
